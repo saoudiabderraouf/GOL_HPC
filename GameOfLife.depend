@@ -1,7 +1,0 @@
-# depslib dependency file v1.0
-1623104930 source:c:\users\foufa_saoudi\desktop\c programmes\gameoflife\main.c
-	<stdio.h>
-	<stdlib.h>
-	<unistd.h>
-	<time.h>
-
