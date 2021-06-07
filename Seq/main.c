@@ -103,8 +103,7 @@ int create_board(int board_size)
 }
 
 /* sets the values of the board to zero - clears junk values */
-void
-set_board (int board[][BOARD_LIMIT], int board_size)
+void set_board (int board[][BOARD_LIMIT], int board_size)
 {
         int k, j;
 
@@ -116,8 +115,7 @@ set_board (int board[][BOARD_LIMIT], int board_size)
 }
 
 /* randomise board */
-void
-randomise_board(int board[][BOARD_LIMIT], int board_size)
+void randomise_board(int board[][BOARD_LIMIT], int board_size)
 {
         int k, i, j;
 
@@ -131,8 +129,7 @@ randomise_board(int board[][BOARD_LIMIT], int board_size)
 }
 
 /* prints the board */
-void
-print_board(int board[][BOARD_LIMIT], int board_size)
+void print_board(int board[][BOARD_LIMIT], int board_size)
 {
         int i, j;
 
@@ -152,8 +149,7 @@ print_board(int board[][BOARD_LIMIT], int board_size)
 
 /* counts the neighbours of a given cell */
 /* see Note at Line 237 for diagram of index table */
-int
-count_neighbours(int board[][BOARD_LIMIT], int k, int j, int board_size)
+int count_neighbours(int board[][BOARD_LIMIT], int k, int j, int board_size)
 {
         int row_indx, column_indx, value, neighbour_count;
         value = 0;
