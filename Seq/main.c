@@ -21,8 +21,8 @@
 #define RANDOM 0.20 /* for 20% of the board to be filled with random inhabited cells */
 #define MAX_ITERATION 200
 #define BIRTH_CONDITION 3
-#define SURVIVE_CONDITION_1 3 /* includes the cell itself, hence +1 to the rule condition */
-#define SURVIVE_CONDITION_2 4 /* includes the cell itself, hence +1 to the rule condition */
+#define SURVIVE_CONDITION_1 2 /* includes the cell itself, hence +1 to the rule condition */
+#define SURVIVE_CONDITION_2 3 /* includes the cell itself, hence +1 to the rule condition */
 #define ANIMATE 1
 
 int create_board (int user_size);
@@ -55,6 +55,8 @@ main(void)
                 life_or_death (board, next_board, k, j, *board_size); /* update next board */
                 if (check_if_equal(board, next_board, *board_size) == 1) {
                         i = MAX_ITERATION;
+                        printf("\nIteration number: %d\n", count);
+                        print_board(next_board, *board_size);
                 } else {
                         printf("\nIteration number: %d\n", count);
                         print_board(next_board, *board_size);
@@ -157,19 +159,15 @@ int count_neighbours(int board[][BOARD_LIMIT], int k, int j, int board_size)
 
         for (row_indx = -1; row_indx <= 1; row_indx++) {
                 for (column_indx = -1; column_indx <= 1; column_indx++) {
-                        if ((k + row_indx >= 0) &&
-                            (j + column_indx >= 0) &&
-                            (k + row_indx < board_size) &&
-                            (j + column_indx < board_size)) {
-                                /* assign the cell value (0 or 1) to variable value */
+                        if (row_indx == 0 && column_indx == 0){
+
+                        }else {
+                            if ((k + row_indx >= 0) && (j + column_indx >= 0) && (k + row_indx < board_size) && (j + column_indx < board_size)) {
                                 value = board[k + row_indx][j + column_indx];
-                                  /* value is determined base on the cell.
-                                     if there is a neighbour cell,
-                                     value =1, else value =0
-                                  */
                                 if (value == 1) {
                                         neighbour_count++;
                                 }
+                            }
                         }
                 }
         }
@@ -182,8 +180,7 @@ int count_neighbours(int board[][BOARD_LIMIT], int k, int j, int board_size)
  * If the cell is inhabited and has fewer than 2 or more than 3 neighbours - Death (cell becomes uninhabited)
  * If the cell is uninhabited has has exactly 3 neighbours - Birth (cell becomes inhabited) */
 
-void
-life_or_death(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size)
+void life_or_death(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size)
 {
         int neighbour_count;
 
@@ -218,8 +215,7 @@ life_or_death(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, in
 }
 
 /* updates the board for the next iteration */
-void
-update_board(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size)
+void update_board(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size)
 {
         for (k = 0; k < board_size; k++) {
                 for (j = 0; j < board_size; j++) {
