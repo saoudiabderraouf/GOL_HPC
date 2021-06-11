@@ -1,246 +1,306 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <time.h>
-#include <pthread.h>
-#include <string.h>
-#include <sys/time.h>
+#include <stdlib.h>
+#include "barrier.h"
+#define ROWS 30
+#define COLS 30
 
-#define BOARD_LIMIT 2048
-#define BOARD_MINUMUM 2
-#define RANDOM 0.20 /* for 20% of the board to be filled with random inhabited cells */
-#define MAX_ITERATION 200
-#define BIRTH_CONDITION 3
-#define SURVIVE_CONDITION_1 2 /* includes the cell itself, hence +1 to the rule condition */
-#define SURVIVE_CONDITION_2 3 /* includes the cell itself, hence +1 to the rule condition */
-#define ANIMATE 1
+int generation = 0;
+int population = 0;
+int populationMax = 0;
+int populationMin = 0;
+int tempGrid[ROWS][COLS];
 
-/* ------------------Begin - Global Variables------------------ */
+// Barrier variable
+pthread_barrier_t barr;
 
 // Number of threads
 unsigned int nthreads;
+int grid[ROWS][COLS];
 // Array for thread ids
 int *t_ids;
-// Barrier variable
-pthread_barrier_t barr;
-// Program has two arrays in order to save each state
-// The needed memory is allocated in main due to dimension values
-int **array1;
-int **array2;
-// Pointers to handle arrays (current and next states, and temp for swap).
-int **curptr, **nextptr, **temp;
-// Flag to specify the bench mode
-unsigned int bench_flag;
-// Flag to specify default dimension mode
-unsigned int dflag;
-// Input filename
-char *filename;
+
 // Struct variables to measure execution time
 struct timeval t_start, t_end;
+int g;
+int getUserInput();
+int getThreadsNumber();
 
-/* ------------------End - Global Variables------------------ */
-
-/* ---------------------Begin - Functions--------------------- */
-
-int create_board (int user_size);
-void set_board (int board[][BOARD_LIMIT], int board_size);
-void randomise_board (int board[][BOARD_LIMIT], int board_size);
-void print_board (int board[][BOARD_LIMIT], int board_size);
-void life_or_death (int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size);
-int count_neighbours (int board[][BOARD_LIMIT], int i, int j, int board_size);
-void update_board (int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size);
-int check_if_equal(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int board_size);
+void initGrid(int, int, int[ROWS][COLS]);
+void processGeneration(int, int, int[ROWS][COLS]);
+void populationUpdate(int, int, int[ROWS][COLS]);
+int countNeighbors(int, int, int[ROWS][COLS], int, int);
+void printGrid(int, int, int[ROWS][COLS]);
+void sleep(unsigned int);
 // Threads' entry function (calculate raw bounds and play game).
 void *entry_function(void *ptr);
+void play(int , int ,int[ROWS][COLS]);
 
-/* ---------------------End - Functions--------------------- */
-
-/* main program */
-int
-main(void)
+    //main function
+int main()
 {
-        int i, user_size, k=0, j=0, count=1;
-        int *board_size = &user_size;
-        int board[BOARD_LIMIT][BOARD_LIMIT];
-        int next_board[BOARD_LIMIT][BOARD_LIMIT];
+// Default value for number of threads is 1
+	
+    srand((unsigned int) time(NULL));
+    initGrid(ROWS, COLS, grid);
+    populationUpdate(ROWS, COLS, grid);
+    printGrid(ROWS, COLS, grid);
+    g = getUserInput();
+    nthreads=getThreadsNumber();
+    // Create an array with threads given the input number
+	pthread_t thr[nthreads];
+    // Allocate memory for the thread ids
+	t_ids = malloc(nthreads * sizeof(int));
+    pthread_barrier_init(&barr, NULL, nthreads);
 
-        user_size = create_board(user_size); /* updates board size based on user input */
-        set_board(board, *board_size); /* initialise current board */
-        randomise_board(board, *board_size);
-        set_board(next_board, *board_size); /* initialise next board to zero */
-        printf("\nIntial board:\n");
-        print_board(board, *board_size);
-        printf("\nThe Game of Life begins:\n");
+    // Create the threads
+	for(int i = 0; i < nthreads; i++)
+    	{
+		t_ids[i]=i;
+        	if(pthread_create(&thr[i], NULL, &entry_function, (void *)&t_ids[i]))
+        	{
+            		printf("Could not create thread %d\n", i);
+            		return -1;
+        	}
+    	}
+    
+   // Proccess's master thread waits for the execution of all threads
+	for(int i = 0; i < nthreads; i++)
+    	{
+        	if(pthread_join(thr[i], NULL))
+        	{
+            		printf("Could not join thread %d\n", i);
+            		return -1;
+        	}
+    	}
+   
+    
+    
+	return 0;
+}
 
-        for (i = 0; i < MAX_ITERATION; i++) {
-                life_or_death (board, next_board, k, j, *board_size); /* update next board */
-                if (check_if_equal(board, next_board, *board_size) == 1) {
-                        i = MAX_ITERATION;
-                        printf("\nIteration number: %d\n", count);
-                        print_board(next_board, *board_size);
-                } else {
-                        printf("\nIteration number: %d\n", count);
-                        print_board(next_board, *board_size);
-                        update_board(board, next_board, k, j, *board_size);     /* updates current board */
-                        count++;
+    //functions
+int getUserInput()
+{
+	int g;
+	printf("Welcome to the Game of Life.\n");
+	printf("How many generations do you want to watch? ");
+	scanf("%d", &g);
+	return g;
+}
+int getThreadsNumber()
+{
+	int t;
+	printf("Setting of number of threads.\n");
+	printf("How many threads do you want to create? ");
+	scanf("%d", &t);
+	return t;
+}
+
+void initGrid(int rows, int cols, int g[rows][cols])
+{
+	int i, j, k;
+   
+	for (i = 0; i < rows; i++)
+	{
+		for (j = 0; j < cols; j++)
+		{
+                //array is bounded by [-1]'s
+			if (i == 0 || j == 0 || i == (rows - 1) || j == (cols - 1))
+			{
+				g[i][j] = -1;
+			}
+			else
+			{
+                    //initial random grid
+				// k = rand() % 3;
+                if (i < j)
+                {
+                    g[i][j] = 1;
+                    population++;
                 }
-        }
-
-        printf("The Game of Life has ended.\n");
-
-        return 0;
-}
-
-/* checks if the boards are equal */
-int
-check_if_equal(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int board_size)
-{
-        int k, j;
-
-        for (k = 0; k < board_size; k++) {
-                for (j = 0; j < board_size; j++) {
-                        if (board[k][j] != next_board[k][j]) {
-                                return 0;
-                        }
+                else
+                {
+                    g[i][j] = 0;
                 }
-        }
-        return (1);
+			}
+		}
+        
+	}
+    processGeneration(rows, cols, g);
 }
 
-/* user-defined board */
-int create_board(int board_size)
+void processGeneration(int rows, int cols, int g[rows][cols])
 {
-        printf("Welcome to my implementation of Conway's Game of Life\n");
-        printf("Please ensure you are running this terminal at full screen for best results!\n");
-        printf("You can have any size from 2 to 2048. How large would you like the board to be? \n");
-
-        if (scanf("%d", &board_size) != 1) {
-                printf("There has been an error with your input. Please insert an integer. Try again.\n");
-        } else if (board_size > BOARD_LIMIT || board_size < BOARD_MINUMUM) {
-                printf("That is out of bounds for our purposes.\n");
-        } else {
-                printf("The board size is now %d\n", board_size);
+    int i, j, neighbors;
+    for(i = 0; i < rows; i++)
+    {
+        for(j = 0; j < cols; j++)
+        {
+                //ignore borders
+            if (g[i][j] == -1) continue;
+                //get number of neighbors
+            neighbors = countNeighbors(rows, cols, g, i, j);
+                //death conditions
+            if(g[i][j] == 1 && (neighbors < 2 || neighbors > 3))
+            {
+                tempGrid[i][j] = 0;
+            }
+                //birth conditions
+            else if (g[i][j] == 0 && neighbors == 3)
+            {
+                tempGrid[i][j] = 1;
+            }
         }
-
-        return board_size;
+    }
 }
 
-/* sets the values of the board to zero - clears junk values */
-void set_board (int board[][BOARD_LIMIT], int board_size)
+void populationUpdate(int rows, int cols, int g[rows][cols])
 {
-        int k, j;
-
-        for (k = 0; k < board_size; k++) {
-                for (j = 0; j < board_size; j++) {
-                        board[k][j] = 0;
-                  }
+    int i, j;
+        //clean slate for population counting
+    population = 0;
+        //population counting
+    for(i = 0; i < rows; i++)
+    {
+        for(j = 0; j < cols; j++)
+        {
+            if(g[i][j] == -1) continue;
+            if(tempGrid[i][j] == 1) population++;
+            g[i][j] = tempGrid[i][j];
         }
+    }
+    if (population > populationMax) 
+    {
+        populationMax = population;
+    }
+    if (population < populationMin || populationMin == 0)
+    {
+        populationMin = population;
+    }
 }
 
-/* randomise board */
-void randomise_board(int board[][BOARD_LIMIT], int board_size)
+int countNeighbors(int rows, int cols, int g[rows][cols], int x, int y)
 {
-        int k, i, j;
-
-        srand((unsigned)time(NULL)); /* set the random seed */
-
-        for (k = 0; k < (board_size * board_size * RANDOM); k++) {
-                i = rand() % (board_size);
-                j = rand() % (board_size);
-                board[i][j] = 1;
+    int n = 0, i, j;
+    
+    for (j = y - 1; j < y + 2; j++)
+    {
+        for (int i = x - 1; i < x + 2; i++)
+        {
+            if (i == x && j == y)
+            {
+                continue;
+            }
+            if (g[i][j] != -1)
+            {
+                n += g[i][j];
+            }
         }
+    }
+    return n;
 }
 
-/* prints the board */
-void print_board(int board[][BOARD_LIMIT], int board_size)
+void printGrid(int rows, int cols, int g[rows][cols])
 {
-        int i, j;
-
-        for (i = 0; i < board_size; i++) {
-                for (j = 0; j < board_size; j++) {
-                        if (board[i][j] == 1) {
-                                printf("1   ");
-                        } else {
-                                printf("-   ");
-                        }
-                }
-                printf("\n");
+    system("clear");
+    printf("Welcome to the Game of Life! Generation %d\n", generation);
+    printf("Population: %d [MAX %d] [ MIN %d]\n", population, populationMax, populationMin);
+    int i, j;
+    for (i = 0; i < rows; i++)
+    {
+        for (j = 0; j < cols; j++)
+        {
+            switch (g[i][j])
+            {
+                case -1: putchar('#'); break;
+                case  0: putchar(' '); break;
+                case  1: putchar('X'); break;
+                default: break;
+            }
         }
-
-
+        putchar('\n');
+    }
 }
 
-/* counts the neighbours of a given cell */
-/* see Note at Line 237 for diagram of index table */
-int count_neighbours(int board[][BOARD_LIMIT], int k, int j, int board_size)
+void play (int rows, int cols, int grid[rows][cols]){
+    generation++;
+    processGeneration(ROWS, COLS, grid);
+  
+    printGrid(ROWS, COLS, grid);
+}
+void *entry_function(void *t_id)
 {
-        int row_indx, column_indx, value, neighbour_count;
-        value = 0;
-        neighbour_count = 0; /* reset count for new cell */
+	int *thread_id=(int*)t_id;
 
-        for (row_indx = -1; row_indx <= 1; row_indx++) {
-                for (column_indx = -1; column_indx <= 1; column_indx++) {
-                        if (row_indx == 0 && column_indx == 0){
+	// Calculate the array bounds that each thread will process
+	int bound = ROWS / nthreads;
+	int start = *thread_id * bound;
+	int finish = start + bound;
 
-                        }else {
-                            if ((k + row_indx >= 0) && (j + column_indx >= 0) && (k + row_indx < board_size) && (j + column_indx < board_size)) {
-                                value = board[k + row_indx][j + column_indx];
-                                if (value == 1) {
-                                        neighbour_count++;
-                                }
-                            }
-                        }
-                }
-        }
+	int i,bn;
 
-        return neighbour_count;
-}
+	// exclude extern cells
+	if(*thread_id==0) start++;
+	if(*thread_id==nthreads-1) finish=COLS-1;
 
-/* perform life or death rules */
-/* If the cell is inhabited and has exactly 2 or 3 neighbours - Survive (cell remains inhabited)
- * If the cell is inhabited and has fewer than 2 or more than 3 neighbours - Death (cell becomes uninhabited)
- * If the cell is uninhabited has has exactly 3 neighbours - Birth (cell becomes inhabited) */
+	// Play the game for 100 rounds
+	for (i=0; i<g; i++)
+	{	
+		play (ROWS, COLS, grid);
+	
+		/* ------ Synchronization point with barries ------
+		The pthread_barrier_wait subroutine synchronizes participating threads
+		 at the barrier referenced by barrier. 
+		The calling thread blocks until the required number of threads have called 
+		pthread_barrier_wait specifying the barrier.
 
-void life_or_death(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size)
+		When the required number of threads have called pthread_barrier_wait specifying the barrier, 
+		the constant PTHREAD_BARRIER_SERIAL_THREAD is returned to one unspecified thread 
+		and 0 is returned to the remaining threads. 
+
+		At this point, the barrier resets to the state it had as a result of 
+		the most recent pthread_barrier_init function that referenced it.
+		*/
+    		bn = pthread_barrier_wait(&barr);
+            
+    		if(bn != 0 && bn != PTHREAD_BARRIER_SERIAL_THREAD)
+    		{
+        		printf("Could not wait on barrier\n");
+        		exit(-1);
+   		}
+		
+		/* 
+		The thread with ID=0 is responsible to swap the pointers and
+		print the board's status in each round.
+		ps: The screen prints are omitted in bench mode (bench_flag)
+		*/
+		if(bn==PTHREAD_BARRIER_SERIAL_THREAD)
+		{
+		  populationUpdate(ROWS, COLS, grid);	
+				
+		}
+		
+
+		//One more barrier is needed in order to ensure
+		//that the pointers have been swapped before go to next round
+		bn = pthread_barrier_wait(&barr);
+    		if(bn != 0 && bn != PTHREAD_BARRIER_SERIAL_THREAD)
+    		{
+        		printf("Could not wait on barrier\n");
+        		exit(-1);
+   		}
+	}// End of g play rounds for loop
+	return 0;
+}//End of entry function
+
+
+void sleep(unsigned int mill)
 {
-        int neighbour_count;
-
-        set_board(next_board, board_size);
-
-        for (k = 0; k < board_size; k++) {
-                for (j = 0; j < board_size; j++) {
-                        neighbour_count = count_neighbours(board, k, j, board_size);
-                        if (board[k][j] == 0) {
-                                /* cell is uninhabited, check if conditions
-                                   for birth are met
-                                */
-                                if (neighbour_count == BIRTH_CONDITION) {
-                                        next_board[k][j] = 1;   /* birth */
-                                } else {
-                                        next_board[k][j] =0;
-                                }
-                        } else if (board[k][j] == 1) {
-                                /* cell exists, check if it survies or dies */
-                                if (neighbour_count == SURVIVE_CONDITION_1 ||
-                                    neighbour_count == SURVIVE_CONDITION_2) {
-                                        /* survival */
-                                        next_board[k][j] = board[k][j];
-                                } else {
-                                        /* death */
-                                        next_board[k][j] = 0;
-                                }
-                        }
-                }
-        }
-        printf("\n");
+    clock_t start = clock();
+    while (clock() - start < mill) { }
 }
 
-/* updates the board for the next iteration */
-void update_board(int board[][BOARD_LIMIT], int next_board[][BOARD_LIMIT], int k, int j, int board_size)
-{
-        for (k = 0; k < board_size; k++) {
-                for (j = 0; j < board_size; j++) {
-                        board[k][j] = next_board[k][j];
-                }
-        }
-}
+
+
+    //end of the code
