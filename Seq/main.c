@@ -10,6 +10,9 @@ int populationMax = 0;
 int populationMin = 0;
 int tempGrid[ROWS][COLS];
 
+
+
+
 int getUserInput();
 void initGrid(int, int, int[ROWS][COLS]);
 void processGeneration(int, int, int[ROWS][COLS]);
@@ -26,8 +29,8 @@ int main()
     int grid[ROWS][COLS];
     initGrid(ROWS, COLS, grid);
     populationUpdate(ROWS, COLS, grid);
-    printGrid(ROWS, COLS, grid);
-
+   printGrid(ROWS, COLS, grid);
+    
     int i, g;
     g = getUserInput();
     for (i = 0; i < g; i++)
@@ -35,10 +38,11 @@ int main()
         generation++;
         processGeneration(ROWS, COLS, grid);
         populationUpdate(ROWS, COLS, grid);
-        printGrid(ROWS, COLS, grid);
+       printGrid(ROWS, COLS, grid);
+        sleep(1000);
     }
-
-
+    
+    
 	return 0;
 }
 
@@ -54,7 +58,9 @@ int getUserInput()
 
 void initGrid(int rows, int cols, int g[rows][cols])
 {
-	int i, j, k;
+		int i, j, k;
+  
+   
 	for (i = 0; i < rows; i++)
 	{
 		for (j = 0; j < cols; j++)
@@ -62,23 +68,27 @@ void initGrid(int rows, int cols, int g[rows][cols])
                 //array is bounded by [-1]'s
 			if (i == 0 || j == 0 || i == (rows - 1) || j == (cols - 1))
 			{
+       
 				g[i][j] = -1;
 			}
 			else
 			{
                     //initial random grid
-				k = rand() % 3;
-                if (k == 0)
+                if (i < j)
                 {
+                    
                     g[i][j] = 1;
                     population++;
+                  
                 }
                 else
                 {
+                    
                     g[i][j] = 0;
                 }
 			}
 		}
+        
 	}
     processGeneration(rows, cols, g);
 }
@@ -123,7 +133,7 @@ void populationUpdate(int rows, int cols, int g[rows][cols])
             g[i][j] = tempGrid[i][j];
         }
     }
-    if (population > populationMax)
+    if (population > populationMax) 
     {
         populationMax = population;
     }
@@ -136,7 +146,7 @@ void populationUpdate(int rows, int cols, int g[rows][cols])
 int countNeighbors(int rows, int cols, int g[rows][cols], int x, int y)
 {
     int n = 0, i, j;
-
+    
     for (j = y - 1; j < y + 2; j++)
     {
         for (int i = x - 1; i < x + 2; i++)
@@ -156,7 +166,7 @@ int countNeighbors(int rows, int cols, int g[rows][cols], int x, int y)
 
 void printGrid(int rows, int cols, int g[rows][cols])
 {
-    system("cls");
+    system("clear");
     printf("Welcome to the Game of Life! Generation %d\n", generation);
     printf("Population: %d [MAX %d] [ MIN %d]\n", population, populationMax, populationMin);
     int i, j;
@@ -182,3 +192,7 @@ void sleep(unsigned int mill)
     clock_t start = clock();
     while (clock() - start < mill) { }
 }
+
+
+
+    //end of the code
