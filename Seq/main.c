@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#define ROWS 30
-#define COLS 30
+#define ROWS 1024
+#define COLS 1024
 
 int generation = 0;
 int population = 0;
@@ -27,9 +27,10 @@ int main()
 {
     srand((unsigned int) time(NULL));
     int grid[ROWS][COLS];
+    clock_t start=clock();
     initGrid(ROWS, COLS, grid);
     populationUpdate(ROWS, COLS, grid);
-   printGrid(ROWS, COLS, grid);
+    //use this function for small sizes -> printGrid(ROWS,COLS,grid);
     
     int i, g;
     g = getUserInput();
@@ -38,11 +39,11 @@ int main()
         generation++;
         processGeneration(ROWS, COLS, grid);
         populationUpdate(ROWS, COLS, grid);
-       printGrid(ROWS, COLS, grid);
-        sleep(1000);
+        //use this function for small sizes -> printGrid(ROWS,COLS,grid);
     }
-    
-    
+    clock_t end=clock();
+    double globaltime=(end-start)/CLOCKS_PER_SEC;
+    printf( "The process time is %f\n", globaltime );
 	return 0;
 }
 

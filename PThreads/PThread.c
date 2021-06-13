@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <time.h>
+#include <pthread.h>
 #include <stdlib.h>
-#include "barrier.h"
-#define ROWS 30
-#define COLS 30
+#define ROWS 1024
+#define COLS 1024
 
 int generation = 0;
 int population = 0;
@@ -42,9 +42,10 @@ int main()
 // Default value for number of threads is 1
 	
     srand((unsigned int) time(NULL));
+    clock_t start=clock();
     initGrid(ROWS, COLS, grid);
     populationUpdate(ROWS, COLS, grid);
-    printGrid(ROWS, COLS, grid);
+    //use this function for small sizes -> printGrid(ROWS,COLS,grid);
     g = getUserInput();
     nthreads=getThreadsNumber();
     // Create an array with threads given the input number
@@ -74,7 +75,9 @@ int main()
         	}
     	}
    
-    
+    clock_t end=clock();
+    double globaltime=(end-start)/CLOCKS_PER_SEC;
+    printf( "The process time is %f\n", globaltime );
     
 	return 0;
 }
@@ -113,8 +116,7 @@ void initGrid(int rows, int cols, int g[rows][cols])
 			else
 			{
                     //initial random grid
-				// k = rand() % 3;
-                if (i < j)
+				if (rand() % 2)
                 {
                     g[i][j] = 1;
                     population++;
@@ -227,7 +229,7 @@ void play (int rows, int cols, int grid[rows][cols]){
     generation++;
     processGeneration(ROWS, COLS, grid);
   
-    printGrid(ROWS, COLS, grid);
+    //use this function for small sizes -> printGrid(ROWS,COLS,grid);
 }
 void *entry_function(void *t_id)
 {

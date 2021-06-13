@@ -2,8 +2,10 @@
 #include <time.h>
 #include <stdlib.h>
 #include <mpi.h> 
-#define ROWS 30
-#define COLS 30
+#define ROWS 1024
+#define COLS 1024
+  
+// process number must be multipe of ROWS
 
 int nbprocess,processId,processCount,generation = 0;
 int population = 0;
@@ -36,7 +38,7 @@ int main()
     processCount=ROWS/nbprocess;
     if(processId==0) {
         initGrid(ROWS, COLS, grid);
-        printGrid(ROWS,COLS,tempGrid);
+        //use this function for small sizes -> printGrid(ROWS,COLS,grid);
         g = getUserInput();
     };
     /** wait the first process to init grid ***/
@@ -55,6 +57,7 @@ int main()
         }
         MPI_Barrier(MPI_COMM_WORLD);
         if(processId==0){
+            //printGrid(ROWS,COLS,tempGrid);
             int recievedGrid[ROWS][COLS],k;
             generation++;
             population = 0;
@@ -64,7 +67,7 @@ int main()
                 MPI_Recv(&recievedGrid, size, MPI_INT, k, 0, MPI_COMM_WORLD,&status);
                 populationUpdate(ROWS,COLS,recievedGrid,k);
             }
-            printGrid(ROWS,COLS,grid);   
+            //use this function for small sizes -> printGrid(ROWS,COLS,grid);   
         }
         MPI_Barrier(MPI_COMM_WORLD);
         /** broadcast grids  ***/
@@ -73,7 +76,7 @@ int main()
     }
     end = MPI_Wtime(); 
     start=end-start;
-    MPI_Reduce(&start, &globaltime, 1, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
+    MPI_Reduce(&start, &globaltime, 1, MPI_DOUBLE, MPI_MAX, 0,MPI_COMM_WORLD);
     if(processId==0) printf( "The process time is %f\n", globaltime );
     MPI_Finalize();
     
