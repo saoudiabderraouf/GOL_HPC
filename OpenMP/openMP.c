@@ -2,8 +2,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <omp.h>
-#define ROWS 30
-#define COLS 30
+#define ROWS 1024
+#define COLS 1024
 /*
 Pour la premiere qte
 unsigned int nbThreads;
@@ -39,7 +39,7 @@ int main()
     int grid[ROWS][COLS];
     initGrid(ROWS, COLS, grid);
     populationUpdate(ROWS, COLS, grid);
-    printGrid(ROWS, COLS, grid);
+    //use this function for small sizes -> printGrid(ROWS,COLS,grid);  
 
     int i, g;
     g = getUserInput();
@@ -50,7 +50,7 @@ int main()
         generation++;
         processGeneration(ROWS, COLS, grid);
         populationUpdate(ROWS, COLS, grid);
-        printGrid(ROWS, COLS, grid);
+        //use this function for small sizes -> printGrid(ROWS,COLS,grid);  
     }
     
     double tf= omp_get_wtime();
