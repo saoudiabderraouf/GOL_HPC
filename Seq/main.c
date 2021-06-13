@@ -74,16 +74,13 @@ void initGrid(int rows, int cols, int g[rows][cols])
 			else
 			{
                     //initial random grid
-                if (i < j)
+                if (rand() % 2)
                 {
-                    
                     g[i][j] = 1;
                     population++;
-                  
                 }
                 else
                 {
-                    
                     g[i][j] = 0;
                 }
 			}
