@@ -73,7 +73,7 @@ int getUserInput()
 
 void initGrid(int rows, int cols, int g[rows][cols])
 {
-	int i, j, k;
+	int i, j;
 	#pragma omp parallel for schedule(static, rows/nbThreads) reduction(+: population)
 	for (i = 0; i < rows; i++)
 	{
@@ -87,8 +87,7 @@ void initGrid(int rows, int cols, int g[rows][cols])
 			else
 			{
                     //initial random grid
-				k = rand() % 3;
-                if (k == 0)
+                if (rand() % 2)
                 {
                     g[i][j] = 1;
                     population++;

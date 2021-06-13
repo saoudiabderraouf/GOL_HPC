@@ -59,7 +59,7 @@ int getUserInput()
 
 void initGrid(int rows, int cols, int g[rows][cols])
 {
-		int i, j, k;
+		int i, j;
   
    
 	for (i = 0; i < rows; i++)
