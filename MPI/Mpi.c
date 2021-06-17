@@ -2,8 +2,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <mpi.h> 
-#define ROWS 1024
-#define COLS 1024
+#define ROWS 2048
+#define COLS 2048
   
 // process number must be multipe of ROWS
 
@@ -18,68 +18,52 @@ int getUserInput();
 void initGrid(int, int, int[ROWS][COLS]);
 void processGeneration(int, int, int[ROWS][COLS]);
 void populationUpdate(int, int, int[ROWS][COLS],int);
-int countNeighbors(int, int, int[ROWS][COLS], int, int);
+int  countNeighbors(int, int, int[ROWS][COLS], int, int);
 void printGrid(int, int, int[ROWS][COLS]);
+void mergeResult(int[ROWS][COLS], int[ROWS][COLS], int *);
 void sleep(unsigned int);
 
     //main function
 int main()
 {
     
-    int res,i,g,size=COLS*ROWS,tmpMax,tmpMin;
+    int res,i,g=200,size=COLS*ROWS,tmpMax,tmpMin;
     MPI_Init(NULL, NULL);
     double start,end,globaltime; 
     start = MPI_Wtime(); 
     srand((unsigned int) time(NULL));
+    MPI_Op customOp; 
 	MPI_Status status;
     MPI_Request request;
 	MPI_Comm_size(MPI_COMM_WORLD, &nbprocess);
 	MPI_Comm_rank(MPI_COMM_WORLD, &processId);
+    MPI_Op_create( (MPI_User_function *)mergeResult, size, &customOp ); 
     processCount=ROWS/nbprocess;
     if(processId==0) {
         initGrid(ROWS, COLS, grid);
-        //use this function for small sizes -> printGrid(ROWS,COLS,grid);
-        g = getUserInput();
+        //use this function for small sizes:   printGrid(ROWS,COLS,grid);
+        // remove read actions to get net time:    g = getUserInput();
     };
     /** wait the first process to init grid ***/
     MPI_Barrier(MPI_COMM_WORLD);
-    /** broadcast data to all process ***/
+    /// broadcast data to all process 
     MPI_Bcast(&g, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&grid, size, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&tempGrid, size, MPI_INT, 0, MPI_COMM_WORLD);
-    for (i = 0; i < g; i++)
-    {
-        /** calculate part of generation  ***/
+    for (i = 0; i < g; i++){
         processGeneration(ROWS, COLS, grid);
-        if(processId!=0) {
-            /** send result to the first process  ***/
-            MPI_Isend(&tempGrid, size, MPI_INT,0, 0, MPI_COMM_WORLD,&request);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-        if(processId==0){
-            //printGrid(ROWS,COLS,tempGrid);
-            int recievedGrid[ROWS][COLS],k;
-            generation++;
-            population = 0;
-            /** Update population  ***/
-            populationUpdate(ROWS,COLS,tempGrid,0);
-            for(k=1;k<nbprocess;k++){
-                MPI_Recv(&recievedGrid, size, MPI_INT, k, 0, MPI_COMM_WORLD,&status);
-                populationUpdate(ROWS,COLS,recievedGrid,k);
-            }
-            //use this function for small sizes -> printGrid(ROWS,COLS,grid);   
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
-        /** broadcast grids  ***/
-        MPI_Bcast(&grid, size, MPI_INT, 0, MPI_COMM_WORLD); 
-        MPI_Bcast(&tempGrid, size, MPI_INT, 0, MPI_COMM_WORLD); 
+        MPI_Allreduce( &tempGrid, &grid, size, MPI_INT, customOp, MPI_COMM_WORLD );
+        /***********
+         *  part to print grid
+            if(processId==0) printGrid(ROWS,COLS,grid);
+            MPI_Barrier(MPI_COMM_WORLD);
+        *//////////
     }
     end = MPI_Wtime(); 
     start=end-start;
     MPI_Reduce(&start, &globaltime, 1, MPI_DOUBLE, MPI_MAX, 0,MPI_COMM_WORLD);
-    if(processId==0) printf( "The process time is %f\n", globaltime );
+    if(processId==0) printf("The process time is %f\n", globaltime );
     MPI_Finalize();
-    
 	return 0;
 }
 
@@ -92,6 +76,29 @@ int getUserInput()
 	scanf("%d", &g);
 	return g;
 }
+
+void mergeResult(int in[ROWS][COLS], int out[ROWS][COLS], int *size){
+    int i,j,rankProcess=in[1][1];
+    int start=rankProcess*processCount,end=(rankProcess+1)*processCount;
+    for(i = start; i < end; i++)
+    {
+        for(j = 0; j < COLS; j++)
+        {
+            if(in[i][j] == -1) continue;
+            if(in[i][j] == 1) population++;
+            out[i][j] = in[i][j];
+        }
+    }
+    if (population > populationMax) 
+    {
+        populationMax = population;
+    }
+    if (population < populationMin || populationMin == 0)
+    {
+        populationMin = population;
+    }
+}
+
 void initGrid(int rows, int cols, int g[rows][cols])
 {
 	int i, j;
@@ -102,20 +109,19 @@ void initGrid(int rows, int cols, int g[rows][cols])
                 //array is bounded by [-1]'s
 			if (i == 0 || j == 0 || i == (rows - 1) || j == (cols - 1))
 			{
-				tempGrid[i][j] = -1;
                 g[i][j] = -1;
+                tempGrid[i][j] = -1;
 			}
 			else
 			{
+                //
                 if (rand() % 2)
                 {
-                    tempGrid[i][j] = 1;
                     g[i][j] = 1;
                     population++;
                 }
                 else
                 {
-                    tempGrid[i][j] = 0;
                     g[i][j] = 0;
                 }
 			}
@@ -128,6 +134,8 @@ void processGeneration(int rows, int cols, int g[rows][cols])
 {
     int i, j, neighbors;
     int start=processId*processCount,end=(processId+1)*processCount;
+    /**** put the process id in the first case to be used in reduce function*/
+    if(processId!=0) tempGrid[1][1]=processId;
     for(i = start; i < end; i++)
     {
         for(j = 0; j < cols; j++)
@@ -149,7 +157,7 @@ void processGeneration(int rows, int cols, int g[rows][cols])
         }
     }
 }
-
+/********** useless function in MPI */
 void populationUpdate(int rows, int cols, int g[rows][cols],int rankProcess)
 {
     int i, j;

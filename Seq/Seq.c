@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#define ROWS 1024
-#define COLS 1024
+#define ROWS 2048
+#define COLS 2048
 
 int generation = 0;
 int population = 0;

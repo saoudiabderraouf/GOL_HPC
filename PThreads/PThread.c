@@ -2,8 +2,8 @@
 #include <time.h>
 #include <pthread.h>
 #include <stdlib.h>
-#define ROWS 1024
-#define COLS 1024
+#define ROWS 2048
+#define COLS 2048
 
 int generation = 0;
 int population = 0;
@@ -15,14 +15,14 @@ int tempGrid[ROWS][COLS];
 pthread_barrier_t barr;
 
 // Number of threads
-unsigned int nthreads;
+unsigned int nthreads=2;
 int grid[ROWS][COLS];
 // Array for thread ids
 int *t_ids;
 
 // Struct variables to measure execution time
 struct timeval t_start, t_end;
-int g;
+int g=200;
 int getUserInput();
 int getThreadsNumber();
 
@@ -46,8 +46,9 @@ int main()
     initGrid(ROWS, COLS, grid);
     populationUpdate(ROWS, COLS, grid);
     //use this function for small sizes -> printGrid(ROWS,COLS,grid);
-    g = getUserInput();
-    nthreads=getThreadsNumber();
+    /*remove read actions to get net time 
+        g = getUserInput();
+        nthreads=getThreadsNumber();*/
     // Create an array with threads given the input number
 	pthread_t thr[nthreads];
     // Allocate memory for the thread ids
